@@ -163,3 +163,43 @@ This document provides a deep dive into the codebase, API contracts, and data st
 2.  **Backend Schema**: Update `CanvasElementData` in `agent_server.py` to include `groupId`.
 3.  **Prompt**: Update `context_prompt` in `agent_server.py` to explain how to use groups.
 
+
+##  LLM Integration (AiHubMix)
+
+The project uses **AiHubMix** as the LLM provider, which aggregates models like OpenAI, Gemini, and Claude.
+
+### Configuration
+Configuration is stored in ackend/llm_config.json (do not commit this file if it contains real keys, use uth.json pattern or env vars in production).
+
+`json
+{
+  "llm_api_key": "sk-...",
+  "llm_base_url": "https://aihubmix.com/v1",
+  "llm_model": "gpt-4o"
+}
+``n
+### Tested Models
+We have verified the following models work correctly with the platform:
+
+1.  **Text Chat**: gpt-4o
+    *   Standard OpenAI chat completion format.
+2.  **Search / Knowledge**: gemini-3-pro-preview-search
+    *   **Note**: This specific model ID is required for search capabilities. Generic gemini-pro IDs may fail.
+3.  **Image Generation**: dall-e-3
+    *   Standard OpenAI image generation format.
+
+### Testing
+A test script ackend/test_aihubmix.py is available to verify connectivity and model capabilities.
+
+### Tested Models
+We have verified the following models work correctly with the platform:
+
+1.  **Text Chat**: gpt-4o
+    *   Standard OpenAI chat completion format.
+2.  **Search / Knowledge**: gemini-3-pro-preview-search
+    *   **Note**: This specific model ID is required for search capabilities. Generic gemini-pro IDs may fail.
+3.  **Image Generation**: dall-e-3
+    *   Standard OpenAI image generation format.
+
+### Testing
+A test script ackend/test_aihubmix.py is available to verify connectivity and model capabilities.
