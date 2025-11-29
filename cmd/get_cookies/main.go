@@ -35,18 +35,28 @@ func main() {
 		log.Fatalf("could not create context: %v", err)
 	}
 
-	page, err := context.NewPage()
+	page1, err := context.NewPage()
 	if err != nil {
-		log.Fatalf("could not create page: %v", err)
+		log.Fatalf("could not create page 1: %v", err)
 	}
 
-	fmt.Println("Navigating to Xiaohongshu Creator Studio...")
-	if _, err = page.Goto("https://creator.xiaohongshu.com/publish/publish"); err != nil {
-		log.Fatalf("could not goto: %v", err)
+	fmt.Println("Navigating to Xiaohongshu Creator Studio (Tab 1)...")
+	if _, err = page1.Goto("https://creator.xiaohongshu.com/publish/publish"); err != nil {
+		log.Fatalf("could not goto creator: %v", err)
 	}
 
-	fmt.Println("Please log in manually via QR code or SMS.")
-	fmt.Println("Press 'Enter' here in the terminal once you have successfully logged in...")
+	page2, err := context.NewPage()
+	if err != nil {
+		log.Fatalf("could not create page 2: %v", err)
+	}
+
+	fmt.Println("Navigating to Xiaohongshu Explore (Tab 2)...")
+	if _, err = page2.Goto("https://www.xiaohongshu.com/explore"); err != nil {
+		log.Fatalf("could not goto explore: %v", err)
+	}
+
+	fmt.Println("Please ensure you are logged in on BOTH tabs (manually login if needed).")
+	fmt.Println("Press 'Enter' here in the terminal once you have successfully logged in on both...")
 
 	// Wait for user to press Enter
 	reader := bufio.NewReader(os.Stdin)
