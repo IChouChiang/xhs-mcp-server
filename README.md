@@ -1,114 +1,73 @@
-# xhs-mcp-server
+# Xiaohongshu (XHS) MCP Agent
 
-A Model Context Protocol (MCP) server implementation for interacting with the Xiaohongshu (Little Red Book) platform. This project aims to provide a standardized interface for AI models to access XHS data and publishing capabilities.
+An advanced AI Agent that controls a local Chrome/Edge browser to automate tasks on Xiaohongshu (Little Red Book). Built with **LangGraph**, **MCP (Model Context Protocol)**, and **DeepSeek-V3**.
 
-## Features
+## 🚀 Features
 
-### Cookie Harvester Utility
-Due to complex login security measures (QR code/SMS verification), this project includes a manual utility to securely capture the full browser session (cookies + local storage).
+- **Dual Interface**:
+  - **CLI (`agent_chrome.py`)**: A robust command-line chat interface.
+  - **Web UI (`web_ui.py`)**: A modern Streamlit-based web interface.
+- **Smart Browser Control**: Uses `mcp-chrome-bridge` to control a real browser instance.
+- **Advanced Tools**:
+  - `extract_images_from_page`: Detects hidden images (CSS backgrounds, lazy-loaded) that standard scrapers miss.
+  - `download_file`: Downloads files/images directly to your local disk with anti-hotlink headers.
+  - `chrome_navigate`, `chrome_click`, `chrome_fill`: Full browser interaction.
+- **Robustness**:
+  - **Auto-Retry**: Handles timeouts and page loading issues.
+  - **Session Injection**: Automatically loads `auth.json` cookies to keep you logged in.
+  - **New Window Policy**: Always opens tasks in a new window to prevent interference.
 
-**Location:** `cmd/get_cookies/main.go`
+## 🛠️ Prerequisites
 
-**Usage:**
-1. Run the utility:
-   ```bash
-   go run cmd/get_cookies/main.go
-   ```
-2. Two browser tabs will open:
-   - Tab 1: XHS Creator Studio
-   - Tab 2: XHS Explore Page
-3. Log in manually on **BOTH** tabs using your preferred method (QR code or SMS).
-4. Once logged in on both tabs, return to the terminal and press **Enter**.
-5. The combined session state will be serialized and saved to `auth.json` in the project root.
+1.  **Python 3.10+**
+2.  **Node.js** (for the bridge)
+3.  **Chrome or Edge Browser**
+4.  **DeepSeek API Key** (saved in `searcher_api.txt`)
 
-### Login Verification
-You can verify that the captured session works correctly using the check login utilities.
+## 📦 Installation
 
-**Creator Studio:**
-```bash
-go run cmd/check_login/main.go
-```
-
-**Explore Page:**
-```bash
-go run cmd/check_explore/main.go
-```
-
-### MCP Server
-The core of this project is the MCP server which exposes XHS functionality (like searching) to AI agents.
-
-**Location:** `cmd/server/main.go`
-
-**Build:**
-```bash
-go build -o xhs-server.exe ./cmd/server/main.go
-```
-
-### LangGraph Agent
-A Python-based agent that uses LangGraph and DeepSeek-V3 to orchestrate interactions with the MCP server.
-
-**Location:** `agent.py`
-
-## Chrome/Edge Automation (New)
-
-We have added support for controlling a real browser (Microsoft Edge) via the `mcp-chrome` extension. This allows for more robust automation that shares your existing login session.
-
-### Quick Start
-1.  **Setup**: Follow [docs/setup_edge_mcp.md](docs/setup_edge_mcp.md) to install the extension and register the bridge.
-2.  **Run**:
-    ```powershell
-    & "path/to/python" agent_chrome.py "Open xiaohongshu.com and search for 'AI Tools'"
+1.  **Install Python Dependencies**:
+    ```bash
+    pip install langchain langchain-openai langgraph mcp streamlit requests
     ```
 
-### Documentation
-*   [Architecture Overview](docs/architecture.md)
-*   [Setup Guide](docs/setup_edge_mcp.md)
-*   [Usage Guide](docs/usage_agent.md)
+2.  **Install MCP Chrome Bridge**:
+    ```bash
+    npm install -g mcp-chrome-bridge
+    # Ensure the bridge is built and accessible (see agent_core.py config)
+    ```
 
-## License
-MIT
+3.  **Configure API Key**:
+    Create a file named `searcher_api.txt` in the root directory and paste your DeepSeek API key.
 
-## Prerequisites
+4.  **Prepare Cookies**:
+    Save your XHS cookies into `auth.json` (using the provided Go tools or manual export) to enable authenticated browsing.
 
-- Go 1.23+
-- Playwright for Go
-- Python 3.10+ (for the agent)
-- Conda (recommended)
+## 🏃 Usage
 
-## Installation
+### 1. CLI Agent (Command Line)
+Best for quick testing and debugging.
+```powershell
+python agent_chrome.py
+```
 
-### 1. Go Dependencies
-1. Clone the repository.
-2. Install Go dependencies:
-   ```bash
-   go mod download
-   ```
-3. Install Playwright browsers:
-   ```bash
-   go run github.com/playwright-community/playwright-go/cmd/playwright@latest install chromium
-   ```
+### 2. Web UI (Streamlit)
+A user-friendly chat interface.
+```powershell
+streamlit run web_ui.py
+```
 
-### 2. Python Environment (for Agent)
-1. Create a Conda environment:
-   ```bash
-   conda create -n xhs_env python=3.11 -y
-   conda activate xhs_env
-   ```
-2. Install Python dependencies:
-   ```bash
-   pip install langgraph langchain langchain_openai mcp
-   ```
-3. Configure API Key:
-   - Create a file named `searcher_api.txt` in the root directory.
-   - Paste your DeepSeek API key into it.
+## 📂 Project Structure
 
-## Usage Workflow
+- **`agent_core.py`**: The "Brain". Contains the tool definitions, graph logic, and system prompts.
+- **`agent_chrome.py`**: The CLI entry point.
+- **`web_ui.py`**: The Web UI entry point.
+- **`session_manager.py`**: Handles cookie injection.
+- **`scripts/`**: PowerShell scripts for setup and registration.
+- **`archive/`**: Old versions and deprecated files.
 
-1. **Harvest Cookies:** Run `go run cmd/get_cookies/main.go` and login.
-2. **Build Server:** Run `go build -o xhs-server.exe ./cmd/server/main.go`.
-3. **Run Agent:**
-   ```bash
-   # Ensure you are in the xhs_env environment
-   python agent.py
-   ```
+## 💡 Tips
+
+- **Image Downloading**: The agent is optimized to find hidden images on XHS. Just ask it to "find and download images".
+- **Navigation**: The agent will always open a new window. Do not close it manually while the agent is working.
 

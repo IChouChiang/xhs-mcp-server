@@ -17,3 +17,16 @@
 # Sensitive data
 cookies.json
 auth.json
+searcher_api.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv
+env/
+venv/
+
+# Downloads
+downloads/
