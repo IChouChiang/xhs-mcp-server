@@ -49,6 +49,25 @@ A Python-based agent that uses LangGraph and DeepSeek-V3 to orchestrate interact
 
 **Location:** `agent.py`
 
+## Chrome/Edge Automation (New)
+
+We have added support for controlling a real browser (Microsoft Edge) via the `mcp-chrome` extension. This allows for more robust automation that shares your existing login session.
+
+### Quick Start
+1.  **Setup**: Follow [docs/setup_edge_mcp.md](docs/setup_edge_mcp.md) to install the extension and register the bridge.
+2.  **Run**:
+    ```powershell
+    & "path/to/python" agent_chrome.py "Open xiaohongshu.com and search for 'AI Tools'"
+    ```
+
+### Documentation
+*   [Architecture Overview](docs/architecture.md)
+*   [Setup Guide](docs/setup_edge_mcp.md)
+*   [Usage Guide](docs/usage_agent.md)
+
+## License
+MIT
+
 ## Prerequisites
 
 - Go 1.23+
