@@ -54,3 +54,10 @@ build/
 .env
 .env.local
 .env.*.local
+
+# Local Config & Secrets
+backend/llm_config.json
+backend/auth.json
+
+# Generated Content
+backend/images/
