@@ -1,0 +1,269 @@
+API
+图片生成接口
+​
+接口说明
+为了方便开发者调用不同的图像生成模型，Aihubmix 提供了统一的图形接口，支持以下多种主流模型：
+
+    OpenAI 系列
+    Google Imagen 系列
+    Flux 系列
+    Qwen 系列
+    doubao-seedream-4-0-250828
+    Ideogram V3
+    百度系列
+
+接口规格：
+Curl
+Copy
+
+curl https://aihubmix.com/v1/models/<model_path>/predictions \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer sk-***" \
+    -d '{
+  "input": {
+    "prompt": "your prompt"
+  }
+}'
+
+其中：
+
+    https://aihubmix.com/v1/models/ 为固定前缀
+    <model_path> 为模型路径，支持：
+        openai/gpt-image-1
+        openai/dall-e-3
+        imagen-4.0-ultra-generate-001
+        imagen-4.0-generate-001
+        imagen-4.0-fast-generate-001
+        imagen-4.0-fast-generate-preview-06-06
+        imagen-3.0-generate-002
+        flux-kontext-max
+        flux-kontext-pro
+        FLUX.1-Kontext-pro
+        FLUX-1.1-pro
+        Qwen-Image
+        Qwen-Image-Edit
+        doubao-seedream-4-0-250828
+        ideogram/V3
+        irag-1.0
+        ernie-irag-edit
+    sk-*** 为你在 Aihubmix 生成的 API Key
+
+下面是各个模型的调用方法。
+​
+OpenAI
+​
+支持的模型：
+
+    gpt-image-1
+    dall-e-3
+
+不支持 2 个逆向模型 gpt-4o-image-vip 和 gpt-4o-image
+​
+调用方法：
+Copy
+
+curl https://aihubmix.com/v1/models/opanai/gpt-image-1/predictions \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer sk-***" \
+    -d '{
+  "input": {
+    "prompt": "A deer drinking in the lake, Sakura petals falling, green and clean water, japanese temple, dappled sunlight, cinematic lighting, expansive view, peace",
+    "size": "1024x1024", 
+    "n": 1,
+    "quality": "high",
+    "moderation": "low",
+    "background": "auto"
+  }
+}'
+
+​
+Google Imagen
+​
+支持的模型：
+
+    imagen-4.0-ultra-generate-001
+    imagen-4.0-generate-001
+    imagen-4.0-fast-generate-001
+    imagen-4.0-fast-generate-preview-06-06
+    imagen-3.0-generate-002
+
+不支持 gemini 系列
+​
+调用方法：
+Copy
+
+curl https://aihubmix.com/v1/models/google/imagen-4.0-fast-generate-001/predictions \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer sk-***" \
+    -d '{
+  "input": {
+    "prompt": "A deer drinking in the lake, Sakura petals falling, green and clean water, japanese temple, dappled sunlight, cinematic lighting, expansive view, peace",
+    "numberOfImages": 1
+  }
+}'
+
+​
+Flux
+​
+支持的模型：
+
+    flux-kontext-max
+    flux-kontext-pro
+    FLUX.1-Kontext-pro
+    FLUX-1.1-pro
+
+    flux-kontext-max 和 flux-kontext-pro 为异步端口，需要分 2 步请求。该系列速度极快，几乎秒出。
+    FLUX.1-Kontext-pro 和 FLUX-1.1-pro 使用通用接口，一步到位
+    flux-Kontext-max 支持文生图和参考图生图，flux-kontext-pro 端口只支持文生图
+    画幅比例 aspect_ratio 支持的范围是：21:9 到 9:21
+    审核宽松度参数 safety_tolerance 范围在 0 到 6 之间0 表示最严格6 表示最宽松。使用参考图时限制为 2。
+    参考图支持 URL 或 Base64 格式，推荐采用前者
+    更多细节参考：FLUX API Reference
+
+​
+调用方法：
+FLUX 一步绘图： 支持 FLUX.1-Kontext-pro 和 FLUX-1.1-pro
+Copy
+
+curl 'https://aihubmix.com/v1/images/generations' \
+  -H 'accept: */*' \
+  -H 'accept-language: zh-CN' \
+  -H 'authorization: Bearer sk-***' \
+  -H 'content-type: application/json' \
+  --data-raw '{"prompt":"a cat in the garden, cute cartoon","model":"FLUX.1-Kontext-pro","safety_tolerance":6}' \
+| jq -r '.data[0].b64_json' \
+| base64 -D > "$HOME/Desktop/image_extract.png"
+
+flux 异步类型第一步：发出绘图请求
+Copy
+
+curl https://aihubmix.com/v1/models/bfl/flux-kontext-max/predictions \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer sk-***" \
+    -d '{
+  "input": {
+    "prompt": "A deer drinking in the lake, Sakura petals falling, green and clean water, japanese temple, dappled sunlight, cinematic lighting, expansive view, peace. reference style as the given image:",
+    "aspect_ratio": "2:3",
+    "safety_tolerance": 6
+  }
+}'
+
+输出结果示例：
+Copy
+
+{"output":[{"polling_url":"https://api.us1.bfl.ai/v1/get_result?id=f9821dbf-f134-41c2-aaa8-5405fb665c76","taskId":"api.us1.***"}]}%      
+
+flux 异步类型第二步：获取生成的图片链接 tasks/ 后面的字符串替换成第一步获取的 taskId：
+获取图片
+Copy
+
+curl https://api.aihubmix.com/v1/tasks/api.us1.bfl.*** \
+    -H "Authorization: Bearer sk-***" \
+    -X GET
+
+​
+Qwen
+​
+支持的模型：
+
+    Qwen-Image
+    Qwen-Image-Edit
+
+​
+调用方法：
+Copy
+
+curl https://aihubmix.com/v1/models/qianfan/qwen-image/predictions \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer sk-***" \
+  -d '{
+    "input": {
+      "prompt": "A beautiful sunset over a calm ocean",
+      "refer_image": "",
+      "n": 1,
+      "size": "1024x1024",
+      "guidance": 7.5,
+      "watermark": false
+    }
+  }'
+
+​
+doubao-seedream-4-0-250828
+​
+支持的模型：
+
+    doubao-seedream-4-0-250828
+
+​
+调用方法：
+Copy
+
+curl https://aihubmix.com/v1/models/doubao/doubao-seedream-4-0-250828/predictions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-***" \
+  -d '{
+    "input": {
+      "prompt": "星际穿越，黑洞，黑洞里冲出一辆快支离破碎的复古列车，抢视觉冲击力，电影大片，末日既视感，动感，对比色，oc渲染，光线追踪，动态模糊，景深，超现实主义，深蓝，画面通过细腻的丰富的色彩层次塑造主体与场景，质感真实，暗黑风背景的光影效果营造出氛围，整体兼具艺术幻想感，夸张的广角透视效果，耀光，反 射，极致的光影，强引力，吞噬",
+      "size": "2K",
+      "sequential_image_generation": "disabled",
+      "stream": false,
+      "response_format": "url",
+      "watermark": true
+    }
+  }'
+
+输出结果示例：
+Copy
+
+{"output":[{"url":"https://ark-content-generation-v2-cn-beijing.tos-cn-beijing.volces.com/doubao-seedream-4-0/021758***"}]}     
+
+​
+Ideogram V3
+​
+支持的模型：
+
+    V3
+
+    V3 以下版本（V_2、V_1 等）为旧接口，暂不支持
+    返回的链接需要打开代理网络才能获取
+
+​
+调用方法：
+Copy
+
+curl https://aihubmix.com/v1/models/ideogram/V3/predictions \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer sk-***" \
+    -d '{
+  "input": {
+    "prompt": "A deer drinking in the lake, Sakura petals falling, green and clean water, japanese temple, dappled sunlight, cinematic lighting, expansive view, peace, in the style of Pixar 3D",
+    "rendering_speed": "QUALITY",
+    "aspect_ratio": "2x1"
+  }
+}'
+
+​
+百度系列
+​
+支持的模型：
+
+    ERNIE iRAG
+    ERNIE iRAG Edit
+
+​
+调用方法：
+Copy
+
+curl https://aihubmix.com/v1/models/qianfan/irag-1.0/predictions\
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer sk-***" \
+  -d '{
+    "input": {
+      "prompt": "A beautiful sunset over a calm ocean",
+      "refer_image": "",
+      "n": 1,
+      "size": "1024x1024",
+      "guidance": 7.5,
+      "watermark": false
+    }
+  }'

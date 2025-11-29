@@ -1,0 +1,130 @@
+LLM 联网搜索
+​
+1️⃣ 实时联网支持：突破 LLM 时效限制，让输出更准确、更可靠
+我们为 OpenAI 和 Gemini 系列大模型接口带来了获取最新网络信息的能力，帮助你：
+✅ 获取最新资讯：无论是今日热点、最新研究还是实时数据，都能即时获取
+✅ 消除知识盲区：突破大模型训练数据的时间限制，获取训练后的新信息
+✅ 降低幻觉风险：基于实时网络搜索的事实回答，大幅减少 AI 已读乱回的可能性
+✅ 提升决策质量：基于最新事实的分析和建议，让你的决策更有把握 支持的模型： 目前支持 OpenAI 和 Gemini 大模型系列，包含两种接入方式： 1. 原生搜索能力模型： Gemini 系列 (Ground with Google search)：
+
+    gemini-2.0-pro-exp-02-05-search
+    gemini-2.0-flash-exp-search
+    gemini-2.0-flash-search
+
+OpenAI 系列 (Bing search)：
+
+    gpt-4o-search-preview
+    gpt-4o-mini-search-preview
+
+2. 参数支持方式： 只需增加参数web_search_options={}，即可为所有 gemini、OpenAI 大模型开启联网能力。Gemini 系列的搜索费率为 35 美元/千次；
+​
+使用方法
+使用前需要运行pip install -U openai升级 openai 包。 示例：
+Copy
+
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="sk-***", # 换成你在 AiHubMix 生成的密钥
+    base_url="https://aihubmix.com/v1"
+)
+
+chat_completion = client.chat.completions.create(
+    model="gemini-2.0-flash-exp",
+    # 🌐 启用搜索
+    web_search_options={},
+    messages=[
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "搜索大模型 API 平台 AIhubmix 的相关资讯，简短介绍，并提供相关链接。"
+                }
+            ]
+        }
+    ]
+)
+
+print(chat_completion.choices[0].message.content)
+
+​
+2️⃣ 智能冲浪：让 AI 自由驰骋互联网
+通过在模型 id 后方追加 :surfing，让任何大语言模型具备搜索能力。
+
+    追加后缀即可，不需要复杂的整合
+    这种方式会默认将用户请求转发给 Tavily 搜索服务，LLM 根据返回的搜索结果参考作答
+    搜索费用 0.006 美元/次
+    目前「日志明细」里未列出每次搜索的费用，费用直接在「额度变动」扣取，后续会列出
+
+模型 id 在模型广场中复制即可。
+示例：
+Copy
+
+import requests
+import json
+import os
+
+try:
+    response = requests.post(
+        url="https://aihubmix.com/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {os.environ.get('AIHUBMIX_API_KEY')}",
+            "Content-Type": "application/json",
+        },
+        data=json.dumps({
+            "model": "gpt-4o-mini:surfing", # 模型 id 后面追加 :surfing 即可支持搜索
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Search the last fact about ChatGPT memory feature, return with the URL, answer in Chinese"
+                }
+            ]
+        })
+    )
+
+    result = response.json()
+    print("API 响应：", json.dumps(result, ensure_ascii=False, indent=2))
+
+except requests.exceptions.RequestException as e:
+    print(f"请求错误：{e}")
+except json.JSONDecodeError as e:
+    print(f"JSON 解析错误：{e}")
+except Exception as e:
+    print(f"其他错误：{e}")
+
+API 响应示例：
+Copy
+
+{
+  "id": "chatcmpl-BLMY8YIKvcjNpiFmyvIfEGQMvPAAh",
+  "model": "gpt-4o-mini-2024-07-18",
+  "object": "chat.completion",
+  "created": 1744431268,
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "ChatGPT 最近获得了重大的记忆功能升级，现在能够参考用户的所有过去对话，以提供更个性化的回应。用户可以选择不让 ChatGPT 记住这些信息，或完全退出记忆功能。有关此更新的更多信息可以在以下网址找到：[https://www.digitaltrends.com/computing/openai-chatgpt-memory-update/](https://www.digitaltrends.com/computing/openai-chatgpt-memory-update/)"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "system_fingerprint": "fp_b705f0c291",
+  "usage": {
+    "prompt_tokens": 584,
+    "completion_tokens": 99,
+    "total_tokens": 683,
+    "prompt_tokens_details": {
+      "audio_tokens": 0,
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": 0,
+      "audio_tokens": 0,
+      "reasoning_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  }
+}
