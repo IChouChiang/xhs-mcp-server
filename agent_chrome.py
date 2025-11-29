@@ -1,13 +1,15 @@
 import asyncio
 import sys
+import os
+import uuid
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from langgraph.checkpoint.memory import MemorySaver
 
 from agent_core import create_mcp_tools, build_agent_graph
 from session_manager import inject_session
 
 # --- Configuration ---
-# Use the path that was working in web_ui.py
 SERVER_PARAMS = StdioServerParameters(
     command="node",
     args=["C:\\Users\\63091\\AppData\\Roaming\\npm\\node_modules\\mcp-chrome-bridge\\dist\\mcp\\mcp-server-stdio.js"],
@@ -15,62 +17,125 @@ SERVER_PARAMS = StdioServerParameters(
 )
 
 async def main():
-    print("=== MCP Chrome Agent (CLI) ===")
+    print("=== MCP Chrome Agent (CLI - Interactive) ===")
     
-    # 1. Connect to MCP Server
-    async with stdio_client(SERVER_PARAMS) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            print("Connected to MCP Server.")
+    try:
+        # 1. Connect to MCP Server
+        async with stdio_client(SERVER_PARAMS) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                print("Connected to MCP Server.")
 
-            # 2. Inject Session (Cookies)
-            print("Injecting session cookies...")
-            await inject_session(session)
+                # 2. Inject Session (Cookies)
+                print("Injecting session cookies...")
+                await inject_session(session)
 
-            # 3. Create Tools & Agent
-            print("Creating tools...")
-            tools = await create_mcp_tools(session)
-            agent = build_agent_graph(tools)
-            print(f"Agent ready with {len(tools)} tools.")
+                # 3. Create Tools & Agent with Checkpointer
+                print("Creating tools...")
+                tools = await create_mcp_tools(session)
+                
+                # Initialize Memory for Human-in-the-loop
+                memory = MemorySaver()
+                agent = build_agent_graph(tools, checkpointer=memory)
+                
+                print(f"Agent ready with {len(tools)} tools.")
+                print("Interactive Mode: The agent will PAUSE before executing tools.")
+                print("  - Press 'y' to approve.")
+                print("  - Type a new command to redirect.")
+                print("  - Press 'n' to stop.")
+                print("  - Type 'quit' to exit the program.")
 
-            # 4. Interactive Loop
-            print("\nType your command (or 'quit' to exit):")
-            while True:
-                try:
+                # 4. Interactive Loop
+                thread_id = str(uuid.uuid4())
+                config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 150}
+
+                print("\nType your command (or 'quit' to exit):")
+                while True:
                     user_input = input("> ").strip()
                     if user_input.lower() in ["quit", "exit"]:
-                        break
+                        print("Exiting...")
+                        os._exit(0) # Force exit immediately
+                    
                     if not user_input:
                         continue
 
                     print("\n--- Agent Running ---")
                     
-                    # Run the agent
+                    # Initial Run
                     async for event in agent.astream(
                         {"messages": [("user", user_input)]},
-                        config={"recursion_limit": 150}
+                        config=config
                     ):
-                        # Print agent's thought process (messages)
                         if "agent" in event:
                             msg = event["agent"]["messages"][0]
                             print(f"\n[Agent]: {msg.content}")
+                            
+                            # Check if tool calls exist
+                            if msg.tool_calls:
+                                print(f"\n[PAUSED] Agent wants to call: {[t['name'] for t in msg.tool_calls]}")
+
+                    # Handle Interrupts (Human-in-the-loop)
+                    while True:
+                        # Check if we are paused
+                        snapshot = agent.get_state(config)
+                        if not snapshot.next:
+                            print("\n--- Task Completed ---")
+                            break
                         
-                        # Print tool outputs
-                        if "tools" in event:
-                            for msg in event["tools"]["messages"]:
-                                print(f"\n[Tool Output]: {msg.content[:200]}...")
+                        # We are paused before "tools"
+                        print("\n[?] Proceed with tool call? (y/n/new command)")
+                        approval = input(">>> ").strip()
+                        
+                        if approval.lower() in ["quit", "exit"]:
+                            print("Exiting...")
+                            os._exit(0) # Force exit immediately
 
-                    print("\n--- Done ---")
+                        if approval.lower() == "y":
+                            # Resume execution
+                            print("Resuming...")
+                            async for event in agent.astream(None, config=config):
+                                if "tools" in event:
+                                    for msg in event["tools"]["messages"]:
+                                        print(f"\n[Tool Output]: {msg.content[:200]}...")
+                                if "agent" in event:
+                                    msg = event["agent"]["messages"][0]
+                                    print(f"\n[Agent]: {msg.content}")
+                                    if msg.tool_calls:
+                                        print(f"\n[PAUSED] Agent wants to call: {[t['name'] for t in msg.tool_calls]}")
+                        
+                        elif approval.lower() == "n":
+                            print("Aborted by user.")
+                            break
+                        
+                        else:
+                            # Inject new command (Redirect)
+                            print(f"Redirecting with: '{approval}'")
+                            async for event in agent.astream(
+                                {"messages": [("user", approval)]},
+                                config=config
+                            ):
+                                if "agent" in event:
+                                    msg = event["agent"]["messages"][0]
+                                    print(f"\n[Agent]: {msg.content}")
+                                    if msg.tool_calls:
+                                        print(f"\n[PAUSED] Agent wants to call: {[t['name'] for t in msg.tool_calls]}")
 
-                except KeyboardInterrupt:
-                    print("\nInterrupted.")
-                    break
-                except Exception as e:
-                    print(f"\nError: {e}")
+    except KeyboardInterrupt:
+        print("\nInterrupted.")
+        os._exit(0)
+    except Exception as e:
+        print(f"\nError: {e}")
+        os._exit(1)
 
 if __name__ == "__main__":
     # Windows asyncio fix
     if sys.platform.startswith('win'):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
+    finally:
+        print("Goodbye.")
+        os._exit(0)

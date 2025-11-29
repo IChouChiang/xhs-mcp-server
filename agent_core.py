@@ -290,7 +290,7 @@ async def create_mcp_tools(session):
     return langchain_tools
 
 # --- Graph Builder ---
-def build_agent_graph(tools):
+def build_agent_graph(tools, checkpointer=None):
     """Builds the LangGraph agent."""
     
     llm = ChatOpenAI(
@@ -324,4 +324,7 @@ def build_agent_graph(tools):
     workflow.add_conditional_edges("agent", should_continue)
     workflow.add_edge("tools", "agent")
 
+    if checkpointer:
+        return workflow.compile(checkpointer=checkpointer, interrupt_before=["tools"])
+    
     return workflow.compile()
