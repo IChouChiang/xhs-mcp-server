@@ -1,73 +1,123 @@
-# Xiaohongshu (XHS) MCP Agent
+# 🤖 Xiaohongshu (XHS) MCP Agent System
 
-An advanced AI Agent that controls a local Chrome/Edge browser to automate tasks on Xiaohongshu (Little Red Book). Built with **LangGraph**, **MCP (Model Context Protocol)**, and **DeepSeek-V3**.
+A full-stack AI Agent system for automating social media tasks (specifically Xiaohongshu). It combines a **Next.js Frontend**, a **FastAPI Backend**, and a **LangGraph/MCP Agent** to control a local Chrome browser.
 
-## 🚀 Features
+![System Architecture](https://img.shields.io/badge/Architecture-Next.js%20%2B%20FastAPI%20%2B%20LangGraph-blue)
 
-- **Dual Interface**:
-  - **CLI (`agent_chrome.py`)**: A robust command-line chat interface.
-  - **Web UI (`web_ui.py`)**: A modern Streamlit-based web interface.
-- **Smart Browser Control**: Uses `mcp-chrome-bridge` to control a real browser instance.
-- **Advanced Tools**:
-  - `extract_images_from_page`: Detects hidden images (CSS backgrounds, lazy-loaded) that standard scrapers miss.
-  - `download_file`: Downloads files/images directly to your local disk with anti-hotlink headers.
-  - `chrome_navigate`, `chrome_click`, `chrome_fill`: Full browser interaction.
-- **Robustness**:
-  - **Auto-Retry**: Handles timeouts and page loading issues.
-  - **Session Injection**: Automatically loads `auth.json` cookies to keep you logged in.
-  - **New Window Policy**: Always opens tasks in a new window to prevent interference.
+## 🌟 System Components
 
-## 🛠️ Prerequisites
+1.  **Frontend (`sns-agent/`)**:
+    -   A modern "Canva-like" visual editor built with **Next.js 16**.
+    -   Features a drag-and-drop canvas and an **AI Chat Assistant**.
+    -   Communicates with the backend to "Publish" posts or "Chat" with the agent.
 
-1.  **Python 3.10+**
-2.  **Node.js** (for the bridge)
-3.  **Chrome or Edge Browser**
-4.  **DeepSeek API Key** (saved in `searcher_api.txt`)
+2.  **Backend (`agent_server.py`)**:
+    -   A **FastAPI** server that exposes the Agent's capabilities via HTTP.
+    -   Endpoints: `/chat` (for advice) and `/publish` (for automation).
 
-## 📦 Installation
+3.  **The Agent (`agent_core.py`)**:
+    -   Powered by **DeepSeek-V3** and **LangGraph**.
+    -   Uses **MCP (Model Context Protocol)** to control Chrome via `mcp-chrome-bridge`.
+    -   Can navigate, click, extract images, and download files.
 
-1.  **Install Python Dependencies**:
-    ```bash
-    pip install langchain langchain-openai langgraph mcp streamlit requests
-    ```
+4.  **CLI Tool (`agent_chrome.py`)**:
+    -   A standalone command-line version of the agent for testing and "Auto-Pilot" mode.
 
-2.  **Install MCP Chrome Bridge**:
-    ```bash
-    npm install -g mcp-chrome-bridge
-    # Ensure the bridge is built and accessible (see agent_core.py config)
-    ```
+---
 
-3.  **Configure API Key**:
-    Create a file named `searcher_api.txt` in the root directory and paste your DeepSeek API key.
+## ⚠️ Configuration (Crucial!)
 
-4.  **Prepare Cookies**:
-    Save your XHS cookies into `auth.json` (using the provided Go tools or manual export) to enable authenticated browsing.
+**Before running anything, you MUST configure the paths for your machine.**
 
-## 🏃 Usage
+👉 **[READ THE CONFIGURATION GUIDE HERE](CONFIGURATION_GUIDE.md)** 👈
 
-### 1. CLI Agent (Command Line)
-Best for quick testing and debugging.
+*Key items to configure:*
+1.  Path to `mcp-server-stdio.js` in `agent_server.py` and `agent_chrome.py`.
+2.  `searcher_api.txt` (API Key).
+3.  `auth.json` (Cookies).
+
+---
+
+## 🚀 Quick Start Guide
+
+### Step 1: Start the Backend (Agent)
+
+Open a terminal in the root directory (`xhs-mcp-server/`):
+
+```powershell
+# Activate your Python environment
+# conda activate xhs_env
+
+# Run the Server
+python agent_server.py
+```
+*Wait until you see: `Agent ready with X tools.`*
+
+### Step 2: Start the Frontend (UI)
+
+Open a **second terminal** and navigate to the frontend folder:
+
+```powershell
+cd sns-agent
+
+# Install dependencies (first time only)
+npm install
+
+# Start the Dev Server
+npm run dev
+```
+*Wait until you see: `Ready in ... http://localhost:3000`*
+
+### Step 3: Use the System
+
+1.  Open **http://localhost:3000** in your browser.
+2.  **Chat with AI**:
+    -   Click the "AI Assistant" button (top right).
+    -   Type: *"Search for cat images on Xiaohongshu"*.
+    -   The Agent (in Terminal 1) will open Chrome, search, and reply to you in the chat.
+3.  **Publish**:
+    -   Create a design on the canvas.
+    -   Click **Publish** -> **Xiaohongshu**.
+    -   The Agent will navigate to the publish page and attempt to upload (WIP).
+
+---
+
+## 🛠️ Development & Debugging
+
+### Running the CLI Agent (Auto-Pilot)
+If you don't want to use the Web UI, you can run the agent directly in the terminal:
+
 ```powershell
 python agent_chrome.py
 ```
+-   **Interactive Mode**: Type commands manually.
+-   **Auto-Pilot**: Type `auto` to let it run autonomously.
+-   **Pause**: Press `p` to pause execution.
 
-### 2. Web UI (Streamlit)
-A user-friendly chat interface.
-```powershell
-streamlit run web_ui.py
+### Common Issues
+
+**1. "Failed to connect to MCP server"**
+-   **Cause**: The Node.js bridge path is wrong OR Chrome is not reachable.
+-   **Fix**: Check `CONFIGURATION_GUIDE.md`. Ensure `mcp-server-stdio.js` path is correct. Try opening Chrome with `--remote-debugging-port=9222` manually.
+
+**2. "Agent not initialized" (API Error)**
+-   **Cause**: The Python server failed to connect to the bridge on startup.
+-   **Fix**: Check the logs in Terminal 1. Restart `agent_server.py`.
+
+---
+
+## 📂 File Structure
+
+```text
+xhs-mcp-server/
+├── agent_server.py       # 🟢 Backend API (FastAPI)
+├── agent_chrome.py       # 🔵 CLI Agent Tool
+├── agent_core.py         # 🧠 Agent Logic (LangGraph)
+├── session_manager.py    # 🍪 Cookie Injection
+├── CONFIGURATION_GUIDE.md # ⚙️ Setup Instructions
+├── sns-agent/            # 🎨 Frontend (Next.js)
+│   ├── app/              #    React Components
+│   └── ...
+└── ...
 ```
-
-## 📂 Project Structure
-
-- **`agent_core.py`**: The "Brain". Contains the tool definitions, graph logic, and system prompts.
-- **`agent_chrome.py`**: The CLI entry point.
-- **`web_ui.py`**: The Web UI entry point.
-- **`session_manager.py`**: Handles cookie injection.
-- **`scripts/`**: PowerShell scripts for setup and registration.
-- **`archive/`**: Old versions and deprecated files.
-
-## 💡 Tips
-
-- **Image Downloading**: The agent is optimized to find hidden images on XHS. Just ask it to "find and download images".
-- **Navigation**: The agent will always open a new window. Do not close it manually while the agent is working.
 
