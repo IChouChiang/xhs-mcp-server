@@ -6,21 +6,22 @@ A full-stack AI Agent system for automating social media tasks (specifically Xia
 
 ## 🌟 System Components
 
-1.  **Frontend (`sns-agent/`)**:
+1.  **Frontend (`frontend/`)**:
     -   A modern "Canva-like" visual editor built with **Next.js 16**.
     -   Features a drag-and-drop canvas and an **AI Chat Assistant**.
     -   Communicates with the backend to "Publish" posts or "Chat" with the agent.
 
-2.  **Backend (`agent_server.py`)**:
+2.  **Backend (`backend/`)**:
     -   A **FastAPI** server that exposes the Agent's capabilities via HTTP.
     -   Endpoints: `/chat` (for advice) and `/publish` (for automation).
+    -   Contains all Python logic (`agent_server.py`, `agent_core.py`).
 
-3.  **The Agent (`agent_core.py`)**:
+3.  **The Agent (`backend/agent_core.py`)**:
     -   Powered by **DeepSeek-V3** and **LangGraph**.
     -   Uses **MCP (Model Context Protocol)** to control Chrome via `mcp-chrome-bridge`.
     -   Can navigate, click, extract images, and download files.
 
-4.  **CLI Tool (`agent_chrome.py`)**:
+4.  **CLI Tool (`backend/agent_chrome.py`)**:
     -   A standalone command-line version of the agent for testing and "Auto-Pilot" mode.
 
 ---
@@ -32,9 +33,9 @@ A full-stack AI Agent system for automating social media tasks (specifically Xia
 👉 **[READ THE CONFIGURATION GUIDE HERE](CONFIGURATION_GUIDE.md)** 👈
 
 *Key items to configure:*
-1.  Path to `mcp-server-stdio.js` in `agent_server.py` and `agent_chrome.py`.
-2.  `searcher_api.txt` (API Key).
-3.  `auth.json` (Cookies).
+1.  Path to `mcp-server-stdio.js` in `backend/agent_server.py` and `backend/agent_chrome.py`.
+2.  `backend/searcher_api.txt` (API Key).
+3.  `backend/auth.json` (Cookies).
 
 ---
 
@@ -47,6 +48,7 @@ Open a terminal in the root directory (`xhs-mcp-server/`):
 ```powershell
 # Activate your Python environment
 # conda activate xhs_env
+cd backend
 python agent_server.py
 ```
 
@@ -54,10 +56,10 @@ The server will start on `http://127.0.0.1:8000`. It runs in **Auto-Pilot Mode**
 
 ### Step 2: Start the Frontend
 
-Open a new terminal in `xhs-mcp-server/sns-agent/`:
+Open a new terminal in `xhs-mcp-server/`:
 
 ```powershell
-cd sns-agent
+cd frontend
 npm run dev
 ```
 
@@ -81,6 +83,7 @@ Open `http://localhost:3000` in your browser.
 ---
 
 # Run the Server
+cd backend
 python agent_server.py
 ```
 *Wait until you see: `Agent ready with X tools.`*
@@ -90,7 +93,7 @@ python agent_server.py
 Open a **second terminal** and navigate to the frontend folder:
 
 ```powershell
-cd sns-agent
+cd frontend
 
 # Install dependencies (first time only)
 npm install

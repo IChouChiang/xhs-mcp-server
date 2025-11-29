@@ -7,8 +7,8 @@ This project was developed on a specific Windows environment. To run it on your 
 The Python agent communicates with Chrome via a Node.js bridge (`mcp-chrome-bridge`). The path to this bridge is currently **hardcoded** to the developer's machine.
 
 **Files to Edit:**
-1.  `agent_chrome.py` (Line ~16)
-2.  `agent_server.py` (Line ~18)
+1.  `backend/agent_chrome.py` (Line ~16)
+2.  `backend/agent_server.py` (Line ~18)
 
 **What to Change:**
 Look for the `SERVER_PARAMS` section:
@@ -36,7 +36,7 @@ If you installed the bridge globally (`npm install -g mcp-chrome-bridge`), you c
 The agent uses **DeepSeek** (compatible with OpenAI SDK) for reasoning.
 
 **File to Create:**
--   Create a file named `searcher_api.txt` in the root directory (`E:\DOCUMENT\xhs-mcp-server\` or your equivalent).
+-   Create a file named `searcher_api.txt` in the `backend/` directory.
 -   Paste your API Key inside (e.g., `sk-xxxxxxxx`).
 
 *Note: Do not commit this file to Git.*
@@ -48,7 +48,7 @@ The agent uses **DeepSeek** (compatible with OpenAI SDK) for reasoning.
 To automate Xiaohongshu (XHS), you must be logged in. The agent uses cookies injected from `auth.json`.
 
 **File to Create/Update:**
--   `auth.json` in the root directory.
+-   `auth.json` in the `backend/` directory.
 
 **How to get this file:**
 1.  **Manual Method**:

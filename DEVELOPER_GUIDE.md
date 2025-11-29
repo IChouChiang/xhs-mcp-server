@@ -4,7 +4,7 @@ This document provides a deep dive into the codebase, API contracts, and data st
 
 ## 📂 File Structure Analysis
 
-### Root Directory (`/`)
+### Backend Directory (`/backend`)
 - **`agent_server.py`**: The main entry point for the Backend.
     - **Role**: Hosts the FastAPI server and initializes the LangGraph Agent.
     - **Key Components**:
@@ -25,7 +25,7 @@ This document provides a deep dive into the codebase, API contracts, and data st
 - **`agent_chrome.py`**: CLI Debugger.
     - **Role**: A standalone script to run the agent in the terminal without the Web UI. Useful for testing tools in isolation.
 
-### Frontend Directory (`/sns-agent`)
+### Frontend Directory (`/frontend`)
 - **`app/aipost/App.tsx`**: The Main Application Logic.
     - **Role**: Manages the Canvas state (`elements`), Selection state (`selectedElementIds`), and AI communication.
     - **Key Functions**:
