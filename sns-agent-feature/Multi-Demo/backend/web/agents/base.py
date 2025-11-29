@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
-from app.services.llm_client import LLMClient
+from ..services.llm_client import LLMClient
 from ..utils.logger import get_logger
 
 class BaseAgent(ABC):

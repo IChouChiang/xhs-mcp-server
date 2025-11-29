@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List, Optional
 
+from ..schemas import IPProfile
 from .base import BaseAgent
 
 
@@ -83,6 +84,12 @@ class IPAgent(BaseAgent):
         self.profile_store = profile_store
         self.research_agent = research_agent
         self.creator_agent = creator_agent
+
+    def list_profiles(self) -> List[IPProfile]:
+        """Return list of available IP profiles."""
+        # Currently returning the single preset profile
+        # In future, this should query self.profile_store
+        return [IPProfile(**PRESET_IP_PROFILE)]
 
     async def run(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

@@ -40,6 +40,27 @@ class StorageClient:
     def list_sessions(self) -> List[Dict[str, Any]]:
         return list(self._load().get("sessions", []))
 
+    def get_profile(self, user_id: str) -> Optional[Dict[str, Any]]:
+        data = self._load()
+        profiles = data.get("profiles", {})
+        return profiles.get(user_id)
+
+    def create_profile(self, user_id: str, profile_data: Dict[str, Any]) -> Dict[str, Any]:
+        data = self._load()
+        profiles = data.setdefault("profiles", {})
+        profiles[user_id] = profile_data
+        self._dump(data)
+        return profile_data
+
+    def update_profile(self, user_id: str, profile_patch: Dict[str, Any]) -> Dict[str, Any]:
+        data = self._load()
+        profiles = data.setdefault("profiles", {})
+        current_profile = profiles.get(user_id, {})
+        current_profile.update(profile_patch)
+        profiles[user_id] = current_profile
+        self._dump(data)
+        return current_profile
+
     def _load(self) -> Dict[str, Any]:
         return json.loads(self._path.read_text("utf-8"))
 

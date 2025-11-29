@@ -49,6 +49,7 @@ class ResearchFinding(BaseModel):
 class AgentStep(BaseModel):
     agent: str
     action: str
+    content: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 

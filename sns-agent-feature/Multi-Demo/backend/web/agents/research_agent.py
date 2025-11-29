@@ -102,6 +102,9 @@ class ResearchAgent(BaseAgent):
         llm,
         default_platform: str = "google"
     ) -> None:
+        super().__init__(llm=llm, name="ResearchAgent")
+        self._executor = executor
+        self._default_platform = default_platform
         
 # --------------------------------------------
     # Step 1 — MCP 搜索：获取热点内容和图像参考
