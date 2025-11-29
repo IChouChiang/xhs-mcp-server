@@ -52,19 +52,21 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	_, _ = reader.ReadBytes('\n')
 
-	cookies, err := context.Cookies()
+	// Get full storage state (Cookies + LocalStorage)
+	storageState, err := context.StorageState()
 	if err != nil {
-		log.Fatalf("could not get cookies: %v", err)
+		log.Fatalf("could not get storage state: %v", err)
 	}
 
-	cookiesJSON, err := json.MarshalIndent(cookies, "", "  ")
+	// Save to auth.json
+	stateJSON, err := json.MarshalIndent(storageState, "", "  ")
 	if err != nil {
-		log.Fatalf("could not marshal cookies: %v", err)
+		log.Fatalf("could not marshal storage state: %v", err)
 	}
 
-	if err := os.WriteFile("cookies.json", cookiesJSON, 0644); err != nil {
-		log.Fatalf("could not write cookies.json: %v", err)
+	if err := os.WriteFile("auth.json", stateJSON, 0644); err != nil {
+		log.Fatalf("could not write auth.json: %v", err)
 	}
 
-	fmt.Println("Successfully saved cookies to cookies.json")
+	fmt.Println("Successfully saved full auth state to auth.json")
 }
