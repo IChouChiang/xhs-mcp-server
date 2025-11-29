@@ -198,7 +198,13 @@ async def create_mcp_tools(session):
                     print(f"[TOOL] {err_msg}")
                     return err_msg
                 except Exception as e:
-                    err_msg = f"Error calling {name}: {str(e)}"
+                    err_msg = str(e)
+                    # Detect critical connection errors
+                    if "Failed to connect" in err_msg or "Broken pipe" in err_msg or "Connection refused" in err_msg:
+                        print(f"\n[CRITICAL] Connection to MCP server lost: {err_msg}")
+                        raise ConnectionError("MCP Connection Lost") from e
+                    
+                    err_msg = f"Error calling {name}: {err_msg}"
                     print(f"[TOOL] {err_msg}")
                     return err_msg
             return _dynamic_tool
