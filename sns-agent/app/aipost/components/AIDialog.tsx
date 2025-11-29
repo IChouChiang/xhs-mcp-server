@@ -45,18 +45,18 @@ export default function AIDialog({
       return;
     }
 
-    const elementTypes = selectedElements.map(el => el.type).join(', ');
-    const responseMessage = selectedElements.length === 1
-      ? `I'll modify your ${selectedElements[0].type} element based on your request.`
-      : `I'll modify your ${selectedElements.length} selected elements (${elementTypes}) based on your request.`;
+    // const elementTypes = selectedElements.map(el => el.type).join(', ');
+    // const responseMessage = selectedElements.length === 1
+    //   ? `I'll modify your ${selectedElements[0].type} element based on your request.`
+    //   : `I'll modify your ${selectedElements.length} selected elements (${elementTypes}) based on your request.`;
 
     onMessagesChange([
       ...messages,
       { role: 'user', content: prompt },
-      {
-        role: 'assistant',
-        content: responseMessage,
-      },
+      // {
+      //   role: 'assistant',
+      //   content: responseMessage,
+      // },
     ]);
 
     onSubmit(prompt, selectedElements);
