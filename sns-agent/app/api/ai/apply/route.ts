@@ -23,7 +23,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       status: "ok", 
       message: data.message,
-      actions: data.actions // Pass through the actions
+      actions: data.actions, // Pass through the actions
+      suggestions: data.suggestions // Pass through the suggestions
     });
   } catch (error: any) {
     console.error("[AI apply] Error calling Python agent:", error);

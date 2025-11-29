@@ -45,6 +45,7 @@ export default function App() {
   const [isUndoRedoHotkeyEnabled] = useState(true);
   const [publishPlatform, setPublishPlatform] = useState<'x' | 'xiaohongshu' | 'douyin'>('x');
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const interactionSnapshot = useRef<CanvasElement[] | null>(null);
 
   const selectedElements = useMemo(
@@ -144,7 +145,13 @@ export default function App() {
         ...overrideProps?.styles
       },
     };
-    recordAndSet(prev => [...prev, newElement]);
+    recordAndSet(prev => {
+      if (prev.some(el => el.id === newElement.id)) {
+        console.warn(`Duplicate ID ${newElement.id} detected in addElement. Skipping add.`);
+        return prev;
+      }
+      return [...prev, newElement];
+    });
     setSelectedElementIds([newElement.id]);
   };
 
@@ -296,14 +303,17 @@ export default function App() {
   };
 
   const handleAIModify = async (prompt: string, targets: CanvasElement[] = selectedElements) => {
-    if (targets.length === 0) return;
-
     // Send payload to placeholder AI API (server logs it).
+    setIsAiLoading(true);
     try {
       const res = await fetch('/api/ai/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, elements: targets }),
+        body: JSON.stringify({ 
+          prompt, 
+          elements: elements, // Send ALL elements
+          selectedIds: targets.map(t => t.id) // Send IDs of selected elements
+        }),
       });
       
       const data = await res.json();
@@ -316,17 +326,42 @@ export default function App() {
          ]);
       }
 
+      // 1.5 Update Suggestions
+      if (data.suggestions && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+        setAiSuggestions(data.suggestions);
+      }
+
       // 2. Apply AI Actions (if any)
       if (data.actions && Array.isArray(data.actions)) {
         console.log("Applying AI Actions:", data.actions);
+        const localAddedIds = new Set<string>();
+
         data.actions.forEach((action: any) => {
           if (action.action === 'add' && action.element) {
-            // Generate ID if missing
-            const newEl = { 
-              ...action.element, 
-              id: action.element.id || `el-${Date.now()}-${Math.random()}` 
-            };
-            addElement(newEl.type, newEl.content, newEl);
+            // Check if element with this ID already exists (in state OR locally added in this batch)
+            const id = action.element.id;
+            const existingEl = elements.find(e => e.id === id);
+            const alreadyAddedLocally = localAddedIds.has(id);
+
+            if (existingEl || alreadyAddedLocally) {
+              // If it exists, treat as update
+              console.warn(`AI tried to add duplicate ID ${id}, treating as update.`);
+              if (action.element.styles) {
+                updateElementStyles(id, action.element.styles);
+              }
+              const { styles, ...otherProps } = action.element;
+              if (Object.keys(otherProps).length > 0) {
+                updateElement(id, otherProps);
+              }
+            } else {
+              // Generate ID if missing or ensure unique
+              const newEl = { 
+                ...action.element, 
+                id: id || `el-${Date.now()}-${Math.random()}` 
+              };
+              if (newEl.id) localAddedIds.add(newEl.id);
+              addElement(newEl.type, newEl.content, newEl);
+            }
           } 
           else if (action.action === 'update' && action.elementId) {
             // Update styles or properties
@@ -348,6 +383,8 @@ export default function App() {
 
     } catch (err) {
       console.error('AI apply error', err);
+    } finally {
+      setIsAiLoading(false);
     }
 
     // Mock AI modifications based on prompt keywords (Fallback)
@@ -504,6 +541,7 @@ export default function App() {
                     messages={aiMessages}
                     onMessagesChange={setAiMessages}
                     onSubmit={(prompt) => handleAIModify(prompt, selectedElements)}
+                    isLoading={isAiLoading}
                   />
                 </div>
               </div>

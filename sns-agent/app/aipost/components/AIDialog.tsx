@@ -8,6 +8,7 @@ interface AIDialogProps {
   onSubmit: (prompt: string, targets: CanvasElement[]) => void;
   messages: AssistantMessage[];
   onMessagesChange: (messages: AssistantMessage[]) => void;
+  isLoading?: boolean;
 }
 
 export default function AIDialog({
@@ -16,6 +17,7 @@ export default function AIDialog({
   onSubmit,
   messages,
   onMessagesChange,
+  isLoading = false,
 }: AIDialogProps) {
   const [prompt, setPrompt] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -32,18 +34,7 @@ export default function AIDialog({
     e.preventDefault();
     if (!prompt.trim()) return;
 
-    if (selectedElements.length === 0) {
-      onMessagesChange([
-        ...messages,
-        { role: 'user', content: prompt },
-        {
-          role: 'assistant',
-          content: 'Please select one or more elements on the canvas first, then I can help you modify them.',
-        },
-      ]);
-      setPrompt('');
-      return;
-    }
+    // Removed check for selectedElements.length === 0 to allow AI to work without selection
 
     // const elementTypes = selectedElements.map(el => el.type).join(', ');
     // const responseMessage = selectedElements.length === 1
@@ -77,11 +68,20 @@ export default function AIDialog({
     'Distribute horizontally',
   ];
 
+  const globalSuggestions = [
+    'Add a title about Summer',
+    'Search for cat images',
+    'Add a red circle',
+    'Create a modern layout',
+  ];
+
   const promptCards = suggestions.length
     ? suggestions
-    : selectedElements.length > 1
-      ? multiElementSuggestions
-      : singleElementSuggestions;
+    : selectedElements.length === 0
+      ? globalSuggestions
+      : selectedElements.length > 1
+        ? multiElementSuggestions
+        : singleElementSuggestions;
 
   return (
     <div className="bg-white p-4 h-full">
@@ -136,37 +136,39 @@ export default function AIDialog({
               </div>
             </div>
           ))}
+          
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="px-4 py-3 rounded-lg bg-gray-100 text-gray-800">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
 
         {/* Quick Suggestions */}
-        {selectedElements.length === 0 && (
-          <div className="mb-2">
-            <div className="flex items-center gap-2 mb-2 text-amber-600">
-              <AlertCircle className="w-4 h-4" />
-              <span className="text-sm">Select elements to get started</span>
-            </div>
+        <div className="mb-2">
+          <div className="text-sm text-gray-600 mb-1">AI Suggestions:</div>
+          <div className="flex flex-wrap gap-2">
+            {promptCards.map((suggestion, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  setPrompt(suggestion);
+                }}
+                className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors text-sm text-left"
+              >
+                {suggestion}
+              </button>
+            ))}
           </div>
-        )}
-
-        {selectedElements.length > 0 && (
-          <div className="mb-2">
-            <div className="text-sm text-gray-600 mb-1">AI 提示：</div>
-            <div className="flex flex-wrap gap-2">
-              {promptCards.map((suggestion, index) => (
-                <button
-                  key={index}
-                  onClick={() => {
-                    setPrompt(suggestion);
-                  }}
-                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors text-sm"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        </div>
 
         {/* Input */}
         <form onSubmit={handleSubmit} className="flex gap-2">
@@ -174,16 +176,19 @@ export default function AIDialog({
             type="text"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
+            disabled={isLoading}
             placeholder={
-              selectedElements.length > 0
-                ? 'Describe how to modify the selected elements...'
-                : 'Select elements first...'
+              isLoading 
+                ? 'AI is thinking...' 
+                : selectedElements.length > 0
+                  ? 'Describe how to modify the selected elements...'
+                  : 'Select elements first...'
             }
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
           />
           <button
             type="submit"
-            disabled={!prompt.trim()}
+            disabled={!prompt.trim() || isLoading}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
             <Send className="w-4 h-4" />

@@ -73,10 +73,10 @@ Open `http://localhost:3000` in your browser.
 
 ## 📚 Documentation
 
+-   [**Developer Guide & API Reference**](DEVELOPER_GUIDE.md) - **Start Here for Deep Dives!** Detailed analysis of file structure, API contracts, and data flow.
+-   [**Configuration Guide**](CONFIGURATION_GUIDE.md) - Essential setup steps (Cookies, API Keys).
 -   [**Architecture Overview**](docs/architecture.md)
 -   [**Agent Usage Guide**](docs/usage_agent.md)
--   [**API Documentation**](docs/AI_API.md) - **NEW!** Details on the `/chat` endpoint and tools.
--   [**Configuration Guide**](CONFIGURATION_GUIDE.md)
 
 ---
 

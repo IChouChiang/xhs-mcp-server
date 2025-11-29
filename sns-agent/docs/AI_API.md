@@ -37,9 +37,9 @@
 ```json
 {
   "suggestions": [
-    "让标题更有张力",
-    "换成问句吸引互动",
-    "统一配色为蓝色"
+    "Make the title more catchy",
+    "Change to a question",
+    "Use blue color scheme"
   ]
 }
 ```
@@ -72,7 +72,8 @@
         "rotation": 0
       }
     }
-  ]
+  ],
+  "selectedIds": ["text-123"]
 }
 ```
 
@@ -80,11 +81,24 @@
 
 ```json
 {
-  "status": "ok"
+  "status": "ok",
+  "message": "I have updated the text style.",
+  "actions": [
+    {
+      "action": "update",
+      "elementId": "text-123",
+      "element": {
+        "styles": {
+          "fontWeight": "bold",
+          "color": "#0000FF"
+        }
+      }
+    }
+  ]
 }
 ```
 
-- **当前行为**：服务器端打印 `prompt` 与 `elements`，前端收到响应后会用本地规则（关键字）模拟修改。后端接入后，可在此返回新的元素属性（例如新的内容、样式、位置等），前端可调整为以响应结果为准。
+- **当前行为**：前端将所有元素和选中元素的ID发送给后端。后端 AI 分析后返回 `actions` 数组，包含 `add`、`update`、`delete` 指令。前端根据这些指令更新画布状态。即使没有选中元素，AI 也可以根据 prompt 添加或修改元素。
 
 ## 集成要点
 

@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List, Literal, Dict, Any
 from langchain_core.tools import StructuredTool
+from langchain_core.messages import ToolMessage
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from langgraph.checkpoint.memory import MemorySaver
@@ -50,11 +51,13 @@ class CanvasAction(BaseModel):
 class ModifyCanvasSchema(BaseModel):
     rationale: str = Field(..., description="Why you are making these changes")
     actions: List[CanvasAction]
+    suggestions: List[str] = Field(..., description="A list of EXACTLY 3 short follow-up suggestions. Phrased as user commands (e.g. 'Make it bigger'). NOT questions.")
 
-def modify_canvas(rationale: str, actions: List[CanvasAction]):
+def modify_canvas(rationale: str, actions: List[CanvasAction], suggestions: List[str]):
     """
     Use this tool to modify the user's canvas. 
     You can add new elements (text, images), update existing ones (change color, position, text), or delete them.
+    Also provide follow-up suggestions for the user.
     """
     return f"Canvas actions generated: {len(actions)} actions."
 
@@ -134,6 +137,7 @@ class PublishRequest(BaseModel):
 class ChatRequest(BaseModel):
     prompt: str
     elements: List[Dict[str, Any]]
+    selectedIds: Optional[List[str]] = []
 
 @app.post("/chat")
 async def chat_post(request: ChatRequest):
@@ -144,20 +148,56 @@ async def chat_post(request: ChatRequest):
     
     # Construct Prompt with Context
     elements_desc = json.dumps(request.elements, indent=2)
+    selected_desc = json.dumps(request.selectedIds, indent=2)
+    
     context_prompt = (
         f"User is working on a canvas with the following elements:\n{elements_desc}\n\n"
+        f"The user has selected these element IDs: {selected_desc}\n\n"
         f"User says: '{request.prompt}'\n"
         "Please provide advice, suggestions, or perform actions based on this context. "
         "If the user asks for design advice, analyze the elements and give specific feedback. "
         "If the user asks to find resources (like images), use your tools to find them. "
-        "If you want to modify the canvas (add images, change text, etc.), use the 'modify_canvas' tool."
+        "If you want to modify the canvas (add images, change text, etc.), use the 'modify_canvas' tool. "
+        "Even if no elements are selected, you can still add new elements or modify existing ones if the user asks.\n\n"
+        "IMPORTANT: You MUST ALWAYS provide EXACTLY 3 follow-up suggestions for the user in the 'suggestions' field of the modify_canvas tool. "
+        "These suggestions MUST be phrased as short, actionable commands or requests that the USER would say to YOU (the AI). "
+        "Examples: 'Add a title', 'Change background to blue', 'Search for cat images'. "
+        "Do NOT phrase them as questions from you to the user (e.g., 'Would you like...?'). "
+        "Even if you are not modifying the canvas (actions=[]), you MUST call modify_canvas with empty actions just to provide the suggestions."
     )
 
     print(f"[API] Context Prompt: {context_prompt[:100]}...")
 
+    # Debug: Inspect current state/history & Repair if needed
+    try:
+        current_state = state.agent.get_state(state.config)
+        if current_state and current_state.values:
+            msgs = current_state.values.get("messages", [])
+            print(f"[API] Current History ({len(msgs)} messages):")
+            for i, m in enumerate(msgs):
+                tc = getattr(m, 'tool_calls', [])
+                print(f"  {i}. {m.type}: {str(m.content)[:50]}... ToolCalls: {len(tc)}")
+                if tc:
+                    print(f"     - {tc}")
+            
+            # REPAIR: Check for dangling tool calls
+            if msgs and msgs[-1].type == "ai" and getattr(msgs[-1], 'tool_calls', None):
+                print("[API] WARNING: Found dangling tool call! Appending dummy tool message to fix history.")
+                dummy_msgs = []
+                for tc in msgs[-1].tool_calls:
+                    dummy_msgs.append(ToolMessage(
+                        tool_call_id=tc['id'], 
+                        content="Error: Tool execution failed or was interrupted in previous turn."
+                    ))
+                state.agent.update_state(state.config, {"messages": dummy_msgs})
+
+    except Exception as e:
+        print(f"[API] Error inspecting/repairing state: {e}")
+
     try:
         final_response = ""
         canvas_actions = []
+        new_suggestions = []
 
         async for event in state.agent.astream(
             {"messages": [("user", context_prompt)]},
@@ -176,6 +216,9 @@ async def chat_post(request: ChatRequest):
                             # Extract actions from the tool call arguments
                             if 'actions' in tool_call['args']:
                                 canvas_actions.extend(tool_call['args']['actions'])
+                            # Extract suggestions
+                            if 'suggestions' in tool_call['args'] and tool_call['args']['suggestions']:
+                                new_suggestions = tool_call['args']['suggestions']
 
             if "tools" in event:
                 for msg in event["tools"]["messages"]:
@@ -184,7 +227,8 @@ async def chat_post(request: ChatRequest):
         return {
             "status": "success", 
             "message": final_response,
-            "actions": canvas_actions
+            "actions": canvas_actions,
+            "suggestions": new_suggestions
         }
 
     except Exception as e:
