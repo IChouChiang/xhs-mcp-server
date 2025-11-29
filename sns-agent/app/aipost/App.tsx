@@ -122,18 +122,18 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [undo, redo, isUndoRedoHotkeyEnabled]);
 
-  const addElement = (type: 'text' | 'image' | 'drawing', content: any) => {
-    const width = type === 'text' ? 200 : type === 'image' ? 300 : 400;
-    const height = type === 'text' ? 50 : type === 'image' ? 300 : 300;
+  const addElement = (type: 'text' | 'image' | 'drawing', content: any, overrideProps?: Partial<CanvasElement>) => {
+    const width = overrideProps?.width || (type === 'text' ? 200 : type === 'image' ? 300 : 400);
+    const height = overrideProps?.height || (type === 'text' ? 50 : type === 'image' ? 300 : 300);
 
     const newElement: CanvasElement = {
-      id: `${type}-${Date.now()}`,
+      id: overrideProps?.id || `${type}-${Date.now()}`,
       type,
-      x: canvasViewport.centerX - width / 2,
-      y: canvasViewport.centerY - height / 2,
+      x: overrideProps?.x ?? (canvasViewport.centerX - width / 2),
+      y: overrideProps?.y ?? (canvasViewport.centerY - height / 2),
       width,
       height,
-      content,
+      content: overrideProps?.content || content,
       styles: {
         fontSize: 16,
         fontWeight: 'normal',
@@ -141,6 +141,7 @@ export default function App() {
         backgroundColor: type === 'text' ? 'transparent' : '#ffffff',
         opacity: 1,
         rotation: 0,
+        ...overrideProps?.styles
       },
     };
     recordAndSet(prev => [...prev, newElement]);
@@ -306,6 +307,8 @@ export default function App() {
       });
       
       const data = await res.json();
+      
+      // 1. Show AI Message
       if (data.message && data.message !== "AI is offline, using local logic.") {
          setAiMessages(prev => [
            ...prev, 
@@ -313,11 +316,41 @@ export default function App() {
          ]);
       }
 
+      // 2. Apply AI Actions (if any)
+      if (data.actions && Array.isArray(data.actions)) {
+        console.log("Applying AI Actions:", data.actions);
+        data.actions.forEach((action: any) => {
+          if (action.action === 'add' && action.element) {
+            // Generate ID if missing
+            const newEl = { 
+              ...action.element, 
+              id: action.element.id || `el-${Date.now()}-${Math.random()}` 
+            };
+            addElement(newEl.type, newEl.content, newEl);
+          } 
+          else if (action.action === 'update' && action.elementId) {
+            // Update styles or properties
+            if (action.element.styles) {
+              updateElementStyles(action.elementId, action.element.styles);
+            }
+            // Update other props (x, y, width, height, content)
+            const { styles, ...otherProps } = action.element;
+            if (Object.keys(otherProps).length > 0) {
+              updateElement(action.elementId, otherProps);
+            }
+          }
+          else if (action.action === 'delete' && action.elementId) {
+             setElements(prev => prev.filter(el => el.id !== action.elementId));
+          }
+        });
+        return; // Skip local mock logic if AI returned actions
+      }
+
     } catch (err) {
       console.error('AI apply error', err);
     }
 
-    // Mock AI modifications based on prompt keywords
+    // Mock AI modifications based on prompt keywords (Fallback)
     const lowerPrompt = prompt.toLowerCase();
 
     targets.forEach(selectedElement => {

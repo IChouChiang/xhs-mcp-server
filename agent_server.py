@@ -6,7 +6,9 @@ from contextlib import asynccontextmanager
 from typing import List, Dict, Any
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Optional, List, Literal, Dict, Any
+from langchain_core.tools import StructuredTool
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from langgraph.checkpoint.memory import MemorySaver
@@ -21,6 +23,40 @@ SERVER_PARAMS = StdioServerParameters(
     args=["C:\\Users\\63091\\AppData\\Roaming\\npm\\node_modules\\mcp-chrome-bridge\\dist\\mcp\\mcp-server-stdio.js"],
     env=None
 )
+
+# --- Canvas Tool Definition ---
+class CanvasStyle(BaseModel):
+    color: Optional[str] = None
+    fontSize: Optional[int] = None
+    fontWeight: Optional[str] = None
+    backgroundColor: Optional[str] = None
+    rotation: Optional[int] = None
+
+class CanvasElementData(BaseModel):
+    id: Optional[str] = None 
+    type: Literal['text', 'image', 'drawing']
+    content: Optional[str] = None
+    x: Optional[int] = None
+    y: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    styles: Optional[CanvasStyle] = None
+
+class CanvasAction(BaseModel):
+    action: Literal['add', 'update', 'delete']
+    elementId: Optional[str] = Field(None, description="Required for update/delete")
+    element: Optional[CanvasElementData] = Field(None, description="Required for add, optional for update")
+
+class ModifyCanvasSchema(BaseModel):
+    rationale: str = Field(..., description="Why you are making these changes")
+    actions: List[CanvasAction]
+
+def modify_canvas(rationale: str, actions: List[CanvasAction]):
+    """
+    Use this tool to modify the user's canvas. 
+    You can add new elements (text, images), update existing ones (change color, position, text), or delete them.
+    """
+    return f"Canvas actions generated: {len(actions)} actions."
 
 # Global State
 class AppState:
@@ -61,9 +97,18 @@ async def lifespan(app: FastAPI):
         print("Creating tools...")
         tools = await create_mcp_tools(state.session)
         
+        # Add the Canvas Modification Tool
+        tools.append(StructuredTool.from_function(
+            func=modify_canvas,
+            name="modify_canvas",
+            description="Modify the user's canvas (add/update/delete elements).",
+            args_schema=ModifyCanvasSchema
+        ))
+        
         # Initialize Memory
         memory = MemorySaver()
-        state.agent = build_agent_graph(tools, checkpointer=memory)
+        # Disable interrupts for the server so it executes tools automatically
+        state.agent = build_agent_graph(tools, checkpointer=memory, interrupt=False)
         
         # Config for the agent
         state.config = {"configurable": {"thread_id": "server_thread"}, "recursion_limit": 50}
@@ -104,13 +149,16 @@ async def chat_post(request: ChatRequest):
         f"User says: '{request.prompt}'\n"
         "Please provide advice, suggestions, or perform actions based on this context. "
         "If the user asks for design advice, analyze the elements and give specific feedback. "
-        "If the user asks to find resources (like images), use your tools to find them."
+        "If the user asks to find resources (like images), use your tools to find them. "
+        "If you want to modify the canvas (add images, change text, etc.), use the 'modify_canvas' tool."
     )
 
     print(f"[API] Context Prompt: {context_prompt[:100]}...")
 
     try:
         final_response = ""
+        canvas_actions = []
+
         async for event in state.agent.astream(
             {"messages": [("user", context_prompt)]},
             config=state.config
@@ -119,11 +167,25 @@ async def chat_post(request: ChatRequest):
                 msg = event["agent"]["messages"][0]
                 print(f"[Agent]: {msg.content}")
                 final_response = msg.content
+                
+                # Check for tool calls in the agent's message
+                if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                    for tool_call in msg.tool_calls:
+                        if tool_call['name'] == 'modify_canvas':
+                            print(f"[API] Captured modify_canvas action: {tool_call['args']}")
+                            # Extract actions from the tool call arguments
+                            if 'actions' in tool_call['args']:
+                                canvas_actions.extend(tool_call['args']['actions'])
+
             if "tools" in event:
                 for msg in event["tools"]["messages"]:
                     print(f"[Tool]: {msg.content[:100]}...")
 
-        return {"status": "success", "message": final_response}
+        return {
+            "status": "success", 
+            "message": final_response,
+            "actions": canvas_actions
+        }
 
     except Exception as e:
         print(f"[API] Error: {e}")

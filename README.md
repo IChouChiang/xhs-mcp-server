@@ -47,6 +47,38 @@ Open a terminal in the root directory (`xhs-mcp-server/`):
 ```powershell
 # Activate your Python environment
 # conda activate xhs_env
+python agent_server.py
+```
+
+The server will start on `http://127.0.0.1:8000`. It runs in **Auto-Pilot Mode**, meaning it executes tools automatically without pausing for confirmation.
+
+### Step 2: Start the Frontend
+
+Open a new terminal in `xhs-mcp-server/sns-agent/`:
+
+```powershell
+cd sns-agent
+npm run dev
+```
+
+Open `http://localhost:3000` in your browser.
+
+### Step 3: Use the System
+
+1.  **Chat**: Use the "AI Assistant" panel on the right to ask the agent to do things (e.g., "Search for design trends", "Add a title saying 'Hello'").
+2.  **Canvas**: The agent can now **modify your canvas** directly!
+3.  **Publish**: Click the "Publish" button to let the agent automate the posting process to Xiaohongshu.
+
+---
+
+## 📚 Documentation
+
+-   [**Architecture Overview**](docs/architecture.md)
+-   [**Agent Usage Guide**](docs/usage_agent.md)
+-   [**API Documentation**](docs/AI_API.md) - **NEW!** Details on the `/chat` endpoint and tools.
+-   [**Configuration Guide**](CONFIGURATION_GUIDE.md)
+
+---
 
 # Run the Server
 python agent_server.py

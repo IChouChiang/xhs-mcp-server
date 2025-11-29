@@ -17,6 +17,23 @@ This project implements a Model Context Protocol (MCP) server for automating int
 *   **Pros**: Bypasses most anti-bot checks because it uses a real, human-operated browser.
 *   **Cons**: Requires a desktop environment and an open browser window.
 
+## 3. Full-Stack Agent (Next.js + FastAPI)
+*   **Frontend**: `sns-agent` (Next.js 16) provides a visual interface for content creation and chat.
+*   **Backend**: `agent_server.py` (FastAPI) wraps the LangGraph agent.
+*   **Communication**: The frontend sends JSON requests to the backend. The backend uses the `modify_canvas` tool to send updates back to the frontend.
+*   **Mode**: Runs in "Auto-Pilot" mode (no interrupts) to serve API requests efficiently.
+
+## Component Diagram (Full Stack)
+
+```mermaid
+graph TD
+    User[User] -->|Web UI| Frontend[Next.js Frontend]
+    Frontend -->|HTTP POST| Server[FastAPI Server]
+    Server -->|LangGraph| Agent[AI Agent]
+    Agent -->|MCP| Chrome[Chrome Browser]
+    Agent -->|JSON| Frontend
+```
+
 ## Component Diagram (Chrome Bridge)
 
 ```mermaid

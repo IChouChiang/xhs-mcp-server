@@ -20,7 +20,11 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
-    return NextResponse.json({ status: "ok", message: data.message });
+    return NextResponse.json({ 
+      status: "ok", 
+      message: data.message,
+      actions: data.actions // Pass through the actions
+    });
   } catch (error: any) {
     console.error("[AI apply] Error calling Python agent:", error);
     // Fallback to OK so the UI doesn't break, but log the error
