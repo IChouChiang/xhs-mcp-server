@@ -12,6 +12,10 @@ This document provides a deep dive into the codebase, API contracts, and data st
         - `/chat` Endpoint: Handles user interaction, context injection, and tool execution.
         - `/publish` Endpoint: Handles automation tasks.
         - `ModifyCanvasSchema`: Defines the strict structure for AI UI modifications.
+- **`backend/web/services/`**: New modular service layer.
+    - **`browser.py`**: **BrowserService**. A robust wrapper around the LangGraph agent. Handles MCP connection lifecycle, tool execution, and error recovery.
+    - **`mcp_tools.py`**: **MCPToolExecutor**. Implements the **Hybrid Search** routing logic. Decides whether to use the LLM directly (for general queries) or the Browser (for XHS/specific platform tasks).
+    - **`orchestrator.py`**: **Orchestrator**. Manages the flow between the user, the canvas state, and the various services.
 - **`agent_core.py`**: The brain of the Agent.
     - **Role**: Contains the core logic for the LangGraph agent and Tool definitions.
     - **Key Components**:
