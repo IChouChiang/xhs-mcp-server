@@ -17,7 +17,7 @@ A full-stack AI Agent system for automating social media tasks (specifically Xia
     -   Contains all Python logic (`agent_server.py`, `agent_core.py`).
 
 3.  **The Agent (`backend/agent_core.py`)**:
-    -   Powered by **DeepSeek-V3** and **LangGraph**.
+    -   Powered by **GPT-5 (via AiHubMix)** and **LangGraph**.
     -   **Hybrid Search Architecture**: Intelligently routes queries between fast LLM-based search and deep **Browser Automation** (via MCP).
     -   Uses **MCP (Model Context Protocol)** to control Chrome via `mcp-chrome-bridge`.
     -   Can navigate, click, extract images, and download files.

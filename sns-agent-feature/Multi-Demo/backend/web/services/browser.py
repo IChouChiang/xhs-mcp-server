@@ -114,7 +114,46 @@ class BrowserService:
         # or we can try to maintain the session if we run this in a background loop.
         pass
 
-    async def search(self, topic: str, platform: str) -> str:
+    async def run_custom_task(self, task_description: str) -> str:
+        """
+        Runs a custom browser automation task with a raw prompt.
+        """
+        self._logger.info(f"Executing custom browser task: {task_description[:50]}...")
+
+        try:
+            async with stdio_client(self._server_params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    
+                    if inject_session:
+                        await inject_session(session)
+
+                    tools = await create_mcp_tools(session)
+                    memory = MemorySaver()
+                    agent = build_agent_graph(tools, checkpointer=memory, interrupt=False)
+
+                    config = {"configurable": {"thread_id": "custom_browser_task"}, "recursion_limit": 50}
+                    
+                    final_response = ""
+                    
+                    self._logger.info("Starting agent execution loop...")
+                    
+                    async for event in agent.astream(
+                        {"messages": [("user", task_description)]},
+                        config=config
+                    ):
+                        if "agent" in event:
+                            msg = event["agent"]["messages"][0]
+                            if msg.content:
+                                final_response = msg.content
+
+                    return final_response
+
+        except Exception as e:
+            self._logger.error(f"Custom task failed: {e}")
+            return f"Error executing custom task: {e}"
+
+    async def search(self, topic: str, platform: str = "xiaohongshu") -> str:
         """
         Run a search task using the Browser Agent.
         Returns the raw text summary/result from the agent.

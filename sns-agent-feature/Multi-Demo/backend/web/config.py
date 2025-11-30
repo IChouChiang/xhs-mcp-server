@@ -14,8 +14,8 @@ class Settings(BaseSettings):
 
     environment: str = Field(default="development", env="APP_ENV")
     llm_api_key: str = Field(default="", env="LLM_API_KEY")
-    llm_model: str = Field(default="gpt-4o-mini", env="LLM_MODEL")
-    llm_base_url: Optional[str] = Field(default=None, env="LLM_BASE_URL")
+    llm_model: str = Field(default="gpt-5-chat-latest", env="LLM_MODEL")
+    llm_base_url: Optional[str] = Field(default="https://aihubmix.com/v1", env="LLM_BASE_URL")
     storage_path: Path = Field(
         default=Path("backend/web/.data/state.json"), env="BACKEND_STORAGE_PATH"
     )

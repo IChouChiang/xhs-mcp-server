@@ -2,7 +2,9 @@ import asyncio
 import json
 import os
 import requests
-from typing import Annotated, Literal, TypedDict
+import base64
+import time
+from typing import Annotated, Literal, TypedDict, Any, Dict, List, Optional
 
 from langchain_core.tools import StructuredTool
 from langchain_core.messages import SystemMessage
@@ -10,12 +12,22 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph, START
 from langgraph.prebuilt import ToolNode
 from langgraph.graph.message import add_messages
+from pydantic import create_model, Field
 
 # --- Configuration ---
-BASE_URL = "https://api.deepseek.com"
+BASE_URL = "https://aihubmix.com/v1"
+# BASE_URL = None # Use default OpenAI URL
 
 def load_api_key():
     try:
+        # Try to find searcher_api.txt in the same directory as this file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        key_path = os.path.join(current_dir, "searcher_api.txt")
+        if os.path.exists(key_path):
+            with open(key_path, "r") as f:
+                return f.read().strip()
+        
+        # Fallback to current working directory
         with open("searcher_api.txt", "r") as f:
             return f.read().strip()
     except FileNotFoundError:
@@ -25,40 +37,50 @@ def load_api_key():
 API_KEY = load_api_key()
 
 # --- System Prompt ---
-SYSTEM_PROMPT = """You are an expert Browser Automation Agent. You control a real Chrome/Edge browser via MCP tools.
+SYSTEM_PROMPT = """You are an expert Browser Automation Agent powered by GPT-5. You control a real Chrome/Edge browser via Model Context Protocol (MCP) tools.
 
-### CRITICAL RULES:
+### 🧠 CORE PHILOSOPHY
+1. **Think Step-by-Step**: Before taking any action, briefly explain your plan.
+2. **Action -> Reaction**: Filling a form does nothing until you **Submit** it. Always follow `fill` with `click` or `Enter`.
+3. **Verify & Explore**: Don't just assume it worked. Check the page content.
+   - **Challenge**: Try to use *different* tools to verify your state (e.g., scroll down, read text, check interactive elements) to prove you have full control.
 
-1. **STARTING A TASK**:
-   - **ALWAYS** start by opening a **NEW WINDOW**.
-   - Use: `chrome_navigate(url='...', newWindow=True)`
-   - **DO NOT** try to use the current tab (it might be the agent controller).
+### 🛠️ TOOL USAGE MASTERY
+You have access to tools for controlling the browser. You MUST use them correctly.
 
-2. **VERIFY NAVIGATION**:
-   - After navigating, **ALWAYS** call `get_windows_and_tabs` to confirm the new window is open and get its `tabId`.
-   - This ensures you are targeting the correct page.
+**1. Navigation (`chrome_navigate`)**
+   - **Usage**: `chrome_navigate(url="https://...", newWindow=True)`
+   - **Rule**: ALWAYS start a new task with `newWindow=True`.
 
-3. **INTERACTION**:
-   - **Selectors**: Avoid long, brittle chains like `div > div > div`. Use unique IDs, classes, or attributes (e.g., `button[aria-label='Save']`, `img[alt*='Bride']`).
-   - **Click Failures**: If `chrome_click_element` fails, try `chrome_execute_script(script="document.querySelector('YOUR_SELECTOR').click()")`.
-   - **Downloads**: To download an image or file, **DO NOT** try to click "Download". Instead, extract the `src` or `href` URL and use the `download_file` tool.
+**2. Finding Elements (`chrome_get_interactive_elements`)**
+   - **Usage**: `chrome_get_interactive_elements(textQuery="Search")`
+   - **Rule**: Use this to find selectors when you don't know them. It returns a list of interactive elements with their CSS selectors.
 
-4. **IMAGE EXTRACTION (XIAOHONGSHU SPECIAL)**:
-   - Xiaohongshu (XHS) often hides images in `background-image` CSS or lazy-loads them.
-   - **ALWAYS** use the `extract_images_from_page` tool to find images. It runs a special script to find both `<img>` tags and CSS background images.
-   - If you see a 404 or 403 error when downloading, it might be an anti-hotlink protection. The `download_file` tool handles some of this, but ensure the URL is correct.
+**3. Interaction (`chrome_fill_or_select`, `chrome_click_element`)**
+   - **Usage**: `chrome_fill_or_select(selector="#search-input", value="My Query")`
+   - **Usage**: `chrome_click_element(selector="button.submit")`
+   - **CRITICAL**: After filling an input, the page **WILL NOT UPDATE** automatically.
+   - **PREFERRED**: Find and **CLICK** the search button (icon). This is more reliable than "Enter".
+   - **FALLBACK**: If you must use "Enter", ensure the input is focused first.
 
-5. **FORBIDDEN**:
-   - **DO NOT** use `chrome_network_request` (it's invisible).
-   - **DO NOT** use `chrome_inject_script` for navigation.
-   - **DO NOT** close the tab immediately after opening it.
+**4. Keyboard (`chrome_keyboard`)**
+   - **Usage**: `chrome_keyboard(keys="Enter")`
+   - **Rule**: Use this only if there is no clear submit button.
 
-6. **TIMEOUTS**:
-   - If a tool takes too long, it might be stuck. Try a different approach or refresh the page.
+**5. Content Extraction (`chrome_get_web_content`, `extract_images_from_page`)**
+   - **Usage**: `chrome_get_web_content(htmlContent=False)` for text.
+   - **Usage**: `extract_images_from_page()` for images (especially on Xiaohongshu).
 
-7. **COMPLETION**:
-   - When you have achieved the user's goal, **STOP** using tools.
-   - Provide a final text answer to the user summarizing what you did.
+### 🚨 CRITICAL RULES
+- **Arguments**: Ensure all tool arguments are valid JSON. Do not pass empty objects `{}` if the tool requires parameters.
+- **Xiaohongshu (XHS) Specifics**:
+  - **Search**: The "Enter" key often fails on XHS. **ALWAYS** try to click the "Search" button/icon next to the input bar.
+  - **Images**: Images are often in `background-image`. Use `extract_images_from_page`.
+  - **Anti-scraping**: Use `download_file` tool which mimics browser headers.
+- **Errors**: If a tool returns an error, READ it. If it says "Element not found", do not retry the exact same selector. Get new selectors.
+
+### 🏁 GOAL
+Your goal is to complete the user's request efficiently. When done, provide a summary of what you found or achieved.
 """
 
 # --- State Definition ---
@@ -148,6 +170,35 @@ def download_file(url: str, filename: str = None) -> str:
     except Exception as e:
         return f"❌ Download failed: {str(e)}"
 
+def create_pydantic_model_from_schema(name: str, schema: Dict[str, Any]):
+    properties = schema.get("properties", {})
+    required = schema.get("required", [])
+    
+    fields = {}
+    for field_name, field_info in properties.items():
+        field_type = str
+        t = field_info.get("type")
+        if t == "boolean":
+            field_type = bool
+        elif t == "integer":
+            field_type = int
+        elif t == "number":
+            field_type = float
+        elif t == "array":
+            field_type = list
+        elif t == "object":
+            field_type = dict
+            
+        # Determine default value
+        if field_name in required:
+            default = ...
+        else:
+            default = None
+            
+        fields[field_name] = (field_type, Field(default=default, description=field_info.get("description", "")))
+        
+    return create_model(f"{name}Schema", **fields)
+
 # --- Tool Factory ---
 async def create_mcp_tools(session):
     """
@@ -162,6 +213,14 @@ async def create_mcp_tools(session):
         tool_name = tool_info.name
         tool_description = tool_info.description or "No description provided."
         
+        # Create Pydantic model for args
+        args_schema = None
+        if tool_info.inputSchema:
+             try:
+                 args_schema = create_pydantic_model_from_schema(tool_name, tool_info.inputSchema)
+             except Exception as e:
+                 print(f"Warning: Could not create schema for {tool_name}: {e}")
+
         # Factory to capture the specific tool_name for this iteration
         def create_tool_wrapper(name):
             async def _dynamic_tool(**kwargs):
@@ -187,7 +246,22 @@ async def create_mcp_tools(session):
                             if content.type == "text":
                                 output += content.text + "\n"
                             elif content.type == "image":
-                                output += "[Image returned]\n"
+                                # Save image to disk
+                                try:
+                                    if not os.path.exists("downloads"):
+                                        os.makedirs("downloads")
+                                    timestamp = int(time.time())
+                                    filename = f"screenshot_{timestamp}.png"
+                                    filepath = os.path.join("downloads", filename)
+                                    
+                                    image_data = base64.b64decode(content.data)
+                                    with open(filepath, "wb") as f:
+                                        f.write(image_data)
+                                    
+                                    output += f"✅ Image saved to: {filepath}\n"
+                                    print(f"[TOOL] Saved image to {filepath}")
+                                except Exception as e:
+                                    output += f"❌ Failed to save image: {str(e)}\n"
                     
                     parsed_output = parse_tool_output(output.strip())
                     print(f"[TOOL] Result: {parsed_output[:200]}...") # Log summary
@@ -220,6 +294,7 @@ async def create_mcp_tools(session):
             coroutine=tool_func,
             name=tool_name,
             description=tool_description,
+            args_schema=args_schema
         )
         langchain_tools.append(l_tool)
     
@@ -314,7 +389,7 @@ def build_agent_graph(tools, checkpointer=None, interrupt=True):
     llm = ChatOpenAI(
         base_url=BASE_URL,
         api_key=API_KEY,
-        model="deepseek-chat",
+        model="gpt-5-chat-latest",
         temperature=0,
     )
     
