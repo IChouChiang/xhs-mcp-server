@@ -11,6 +11,7 @@ from .orchestrator import Orchestrator
 from .schemas import GenerationRequest, GenerationResponse, IPProfile
 from .services.llm_client import LLMClient
 from .services.mcp_tools import MCPToolExecutor
+from .services.browser import BrowserService
 from .services.storage import StorageClient
 from .utils.logger import get_logger
 
@@ -18,7 +19,11 @@ settings: Settings = get_settings()
 logger = get_logger("web.main")
 storage = StorageClient(settings.storage_path)
 llm_client = LLMClient(settings)
+browser_service = BrowserService(settings)
+
 mcp_executor = MCPToolExecutor(
+    llm_client=llm_client,
+    browser_service=browser_service,
     pinterest_token=settings.mcp_pinterest_token,
     platform_token=settings.mcp_platform_token,
 )
@@ -30,6 +35,10 @@ orchestrator = Orchestrator(
 )
 
 app = FastAPI(title="IP Orchestrator", version="0.1.0")
+
+@app.on_event("startup")
+async def startup_event():
+    await browser_service.start()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

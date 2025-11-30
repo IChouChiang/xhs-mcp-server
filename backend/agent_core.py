@@ -236,6 +236,7 @@ async def create_mcp_tools(session):
         Scans the current page for all images, including hidden CSS background-images.
         Useful for sites like Xiaohongshu where images are not simple <img> tags.
         """
+        # JS to find images and set document.title
         js_script = """
         (function() {
             const images = [];
@@ -248,13 +249,10 @@ async def create_mcp_tools(session):
                 }
             }
 
-            // 1. IMG tags
             document.querySelectorAll('img').forEach(img => {
                 add(img.src, 'img', img.alt || img.title || '');
             });
 
-            // 2. Background images (common in XHS)
-            // We scan divs and spans which are most likely to have bg images
             document.querySelectorAll('div, span, a, section').forEach(el => {
                 const style = window.getComputedStyle(el);
                 const bg = style.backgroundImage;
@@ -264,24 +262,38 @@ async def create_mcp_tools(session):
                 }
             });
             
-            return JSON.stringify(images.slice(0, 50)); // Limit to 50 to avoid overflow
+            const result = JSON.stringify(images.slice(0, 50));
+            document.title = "MCP_IMAGES_RESULT:" + result;
         })();
         """
         print(f"\n[AGENT] Calling Tool: extract_images_from_page")
         try:
-            # We use the existing session to call execute_script
-            result = await session.call_tool("chrome_execute_script", arguments={"script": js_script})
+            # 1. Inject Script
+            # Note: chrome_inject_script expects 'jsScript' and 'type'='js'
+            await session.call_tool("chrome_inject_script", arguments={"jsScript": js_script, "type": "js"})
+            
+            # 2. Read Title
+            await asyncio.sleep(0.5)
+            content_result = await session.call_tool("chrome_get_web_content", arguments={})
             
             # Parse output
-            output = ""
-            if result.content:
-                for content in result.content:
+            title = ""
+            if content_result.content:
+                for content in content_result.content:
                     if content.type == "text":
-                        output += content.text
+                        try:
+                            # The tool returns a JSON string
+                            data = json.loads(content.text)
+                            if isinstance(data, dict):
+                                title = data.get("title", "")
+                        except:
+                            pass
             
-            # The bridge returns JSON string in the text usually
-            parsed = parse_tool_output(output)
-            return parsed
+            if title.startswith("MCP_IMAGES_RESULT:"):
+                json_str = title.replace("MCP_IMAGES_RESULT:", "", 1)
+                return json_str
+            else:
+                return "[]" # No images found or script failed
             
         except Exception as e:
             return f"Error extracting images: {str(e)}"
