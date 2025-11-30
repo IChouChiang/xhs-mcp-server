@@ -72,8 +72,16 @@ class MCPToolExecutor:
             f"Return ONLY a JSON list of objects with keys: 'title', 'url', 'summary'."
         )
         try:
-            response = await self._llm_client.acomplete(prompt)
-            data = json.loads(response.content)
+            # Use generate() instead of acomplete() and handle string return
+            response_text = await self._llm_client.generate(
+                system_prompt="You are a helpful search engine simulator.",
+                user_prompt=prompt
+            )
+            
+            # Clean up potential markdown code blocks
+            content = response_text.replace("```json", "").replace("```", "").strip()
+            data = json.loads(content)
+            
             records = []
             for item in data:
                 records.append(MCPRecord(
@@ -100,9 +108,14 @@ class MCPToolExecutor:
             f"JSON:"
         )
         try:
-            response = await self._llm_client.acomplete(parse_prompt)
+            # Use generate() instead of acomplete() and handle string return
+            response_text = await self._llm_client.generate(
+                system_prompt="You are a data extraction assistant.",
+                user_prompt=parse_prompt
+            )
+            
             # Clean up potential markdown code blocks
-            content = response.content.replace("```json", "").replace("```", "").strip()
+            content = response_text.replace("```json", "").replace("```", "").strip()
             data = json.loads(content)
             
             records = []

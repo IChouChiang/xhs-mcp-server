@@ -179,13 +179,13 @@ Configuration is stored in ackend/llm_config.json (do not commit this file if i
 {
   "llm_api_key": "sk-...",
   "llm_base_url": "https://aihubmix.com/v1",
-  "llm_model": "gpt-4o"
+  "llm_model": "gpt-5-chat-latest"
 }
 ``n
 ### Tested Models
 We have verified the following models work correctly with the platform:
 
-1.  **Text Chat**: gpt-4o
+1.  **Text Chat**: gpt-5-chat-latest
     *   Standard OpenAI chat completion format.
 2.  **Search / Knowledge**: gemini-3-pro-preview-search
     *   **Note**: This specific model ID is required for search capabilities. Generic gemini-pro IDs may fail.
@@ -198,7 +198,7 @@ A test script ackend/test_aihubmix.py is available to verify connectivity and m
 ### Tested Models
 We have verified the following models work correctly with the platform:
 
-1.  **Text Chat**: gpt-4o
+1.  **Text Chat**: gpt-5-chat-latest
     *   Standard OpenAI chat completion format.
 2.  **Search / Knowledge**: gemini-3-pro-preview-search
     *   **Note**: This specific model ID is required for search capabilities. Generic gemini-pro IDs may fail.

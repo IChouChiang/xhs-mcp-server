@@ -14,10 +14,10 @@ client = OpenAI(
 )
 
 def test_chat():
-    print("\n--- Testing Text Chat (OpenAI: gpt-4o) ---")
+    print("\n--- Testing Text Chat (OpenAI: gpt-5-chat-latest) ---")
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-5-chat-latest",
             messages=[{"role": "user", "content": "Hello, introduce yourself briefly."}]
         )
         print(f"Response: {response.choices[0].message.content}")
